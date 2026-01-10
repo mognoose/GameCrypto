@@ -11,6 +11,8 @@ export default defineNuxtConfig({
     '@nuxt/image'
   ],
 
+  plugins: ['~~/plugins/firebase.client.ts'],
+
   css: ['~/assets/css/main.css'],
 
     runtimeConfig: {

@@ -3,7 +3,7 @@
     <NuxtRouteAnnouncer />
     <h1>GameCrypto</h1>
     <SelectGame v-if="!session" @select="setSession" />
-    <div>{{session}}</div>
+    <Game v-else :session />
   </div>
 </template>
 
