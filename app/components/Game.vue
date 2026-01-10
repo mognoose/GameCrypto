@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { doc, setDoc, arrayUnion, onSnapshot, type Firestore } from 'firebase/firestore';
+import { doc, setDoc, arrayUnion, onSnapshot, type Firestore, getDoc, updateDoc } from 'firebase/firestore';
 import type { Message, GameData } from '~/types/game';
 import { formatTime } from '~/composables/time';
 
@@ -46,20 +46,37 @@ const selectedTab = ref('chat')
 const message = ref('')
 const gameData = ref<GameData | null>(null)
 
-onMounted(() => {
+onMounted(async() => {
 	const userName = localStorage.getItem('username')
-	if (!userName) localStorage.removeItem('session')
+	if (!userName) {
+		localStorage.removeItem('session')
+		
+		return
+	}
 	const sessionDocRef = doc(db, 'sessions', props.session);
+	const docSnap = await getDoc(sessionDocRef);
+
+	if (docSnap.exists()) {
+		const data = docSnap.data() as GameData;
+		if (!data.players.some(p => p.player === userName)) {
+			await updateDoc(sessionDocRef, {
+				players: arrayUnion({ player: userName, money: 0 })
+			});
+		}
+	} else {
+		await setDoc(sessionDocRef, { players: [{player: userName, money: 0}], messages: [] });
+	}
+
 	onSnapshot(sessionDocRef, (doc) => {
 		if (doc.exists()) {
 			gameData.value = doc.data() as GameData;
 		} else {
-			gameData.value = { messages: [] };
+			gameData.value = null;
 		}
 	});
 })
 
-function setTab(tab) {
+function setTab(tab: string) {
 	selectedTab.value = tab
 }
 
