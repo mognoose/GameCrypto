@@ -1,14 +1,30 @@
 <template>
-	<form class="select-game" @submit.prevent="selectGame">
+	<form v-if="userName" class="select-game" @submit.prevent="selectGame">
 		<input v-model="session" type="text">
 		<input type="submit" value="Join">
 		<button @click="selectGame">New Game</button>
+	</form>
+	<form v-else @submit.prevent="setUserName">
+		<input class="username-input" type="text" v-model="newUserName">
 	</form>
 </template>
 
 <script setup lang="ts">
 	const session = ref('')
 	const emit = defineEmits(['select'])
+
+	const userName = ref('')
+	const newUserName = ref('')
+
+	function setUserName() {
+		localStorage.setItem('username', newUserName.value)
+		userName.value = newUserName.value
+	}
+
+	onMounted(() => {
+		userName.value = localStorage.getItem('username')
+	})
+
 
 	function selectGame() {
 		if(!session.value) session.value = makeid()

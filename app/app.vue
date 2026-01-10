@@ -12,8 +12,8 @@
   const session = ref<string>('')
 
   function setSession(sessionId: string) {
-    session.value = sessionId;
-    localStorage.setItem('session', sessionId);
+    session.value = sessionId.toUpperCase();
+    localStorage.setItem('session', sessionId.toUpperCase());
   }
 
   onMounted(() => {

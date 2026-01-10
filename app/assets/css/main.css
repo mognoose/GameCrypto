@@ -44,16 +44,54 @@ form {
 			border: 3px solid var(--color-primary-200);
 		}
 	}
+
+	.username-input {
+		text-transform: none;
+	}
 }
 
 .session-id {
 	margin-bottom: 2rem;
 }
 
-.chat {
+.chat, .transaction {
 	text-align: left;
+	height: calc(100dvh - 12rem);
+	display: grid;
+	grid-template-rows: 1fr auto;
+	padding-top: 0;
+
+	.messages {
+		overflow-y: auto;
+	}
 
 	input {
 		text-align: left;
+		text-transform: none;
+		font-size: 1rem;
+		padding: .5rem;
+		height: 3rem;
+		margin-bottom: 0;
+	}
+
+	.actions {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1rem;
+
+		button {
+			font-size: 1rem;
+		}
+	}
+
+	p {
+		.time {
+			font-size: .75rem;
+			margin-right: .5rem;
+		}
+		
+		.user {
+			font-weight: 900;
+		}
 	}
 }
