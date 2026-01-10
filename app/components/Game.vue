@@ -8,9 +8,11 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { doc, setDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, arrayUnion, onSnapshot, type Firestore } from 'firebase/firestore';
+import type { Message, GameData } from '~/types/game';
 
 const { $db } = useNuxtApp()
+const db = $db as Firestore;
 
 const props = defineProps({
 	session: {
@@ -20,13 +22,13 @@ const props = defineProps({
 })
 
 const message = ref('')
-const gameData = ref(null)
+const gameData = ref<GameData | null>(null)
 
 onMounted(() => {
-	const sessionDocRef = doc($db, 'sessions', props.session);
+	const sessionDocRef = doc(db, 'sessions', props.session);
 	onSnapshot(sessionDocRef, (doc) => {
 		if (doc.exists()) {
-			gameData.value = doc.data();
+			gameData.value = doc.data() as GameData;
 		} else {
 			gameData.value = { messages: [] };
 		}
@@ -34,13 +36,13 @@ onMounted(() => {
 })
 
 async function submit() {
-	const payload = {
+	const payload: Message = {
 		message: message.value,
 		user: 'sapatti',
 		createdAt: Date.now(),
 	}
 
-	const sessionDocRef = doc($db, 'sessions', props.session);
+	const sessionDocRef = doc(db, 'sessions', props.session);
 	await setDoc(
 		sessionDocRef,
 		{ messages: arrayUnion(payload) },
