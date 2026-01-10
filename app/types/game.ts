@@ -3,6 +3,8 @@ export interface Message {
   user: string|null;
   createdAt: number;
   requestedAmount?: number;
+  from?: string;
+  to?: string;
 }
 
 export interface GameData {

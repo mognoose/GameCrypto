@@ -1,6 +1,6 @@
 <template>
 	<div class="session-id">{{session}}</div>
-	<form v-if="selectedTab === 'chat'" class="chat" @submit.prevent="submit">
+	<form v-if="selectedTab === 'chat'" class="chat" @submit.prevent="sendMessage">
 		<div class="messages">
 			<p v-for="message in gameData?.messages">
 				<span class="time">{{ formatTime(message.createdAt) }}</span>
@@ -21,12 +21,17 @@
 		<div class="actions">
 			<h1>Send</h1>
 			<input type="number" v-model="amount">
+			<button @click="sendMoney('bank')">Bank</button>
 			<button v-for="player in gameData?.players" @click="sendMoney(player.player)">{{player.player}}</button>
 			<button @click="setTab('chat')">Cancel</button>
 		</div>
 	</div>
-	<div v-else-if="selectedTab === 'req'">
+	<div v-else-if="selectedTab === 'req'" class="transactions">
 		<div class="actions">
+			<h1>Request</h1>
+			<input type="number" v-model="amount">
+			<button @click="requestMoney('bank')">Bank</button>
+			<button v-for="player in gameData?.players" @click="requestMoney(player.player)">{{player.player}}</button>
 			<button @click="setTab('chat')">Cancel</button>
 		</div>
 	</div>
@@ -97,13 +102,17 @@
 		selectedTab.value = tab
 	}
 
-	async function submit() {
+	async function sendMessage(requestedAmount: number|null, from: string|null, to: string|null) {
 		const payload: Message = {
 			message: message.value,
 			user: localStorage.getItem('username'),
 			createdAt: Date.now(),
 		}
 
+		if(requestedAmount)	payload.requestedAmount = requestedAmount
+		if(from) payload.from = from
+		if(to) payload.to = to
+		
 		const sessionDocRef = doc(db, 'sessions', props.session);
 		await setDoc(
 			sessionDocRef,
@@ -148,6 +157,10 @@
 					throw "Insufficient funds!";
 				}
 
+				if (to !== 'bank' && !players.some(p => p.player === to)) {
+					throw "Receiver not found!";
+				}
+
 				const updatedPlayers = players.map(p => {
 					if (p.player === from) {
 						return { ...p, money: p.money - amount.value };
@@ -160,6 +173,8 @@
 
 				transaction.update(sessionDocRef, { players: updatedPlayers });
 			});
+			message.value = `sent ${amount.value} € to ${to}`
+			sendMessage()
 			amount.value = 0;
 			setTab('chat');
 		} catch (e) {
@@ -167,4 +182,42 @@
 			alert(`Transaction failed: ${e}`);
 		}
 	}
+
+	async function requestMoney(from: string) {
+		if (from !== 'bank') {
+			message.value = `requested ${amount.value} € from ${from}`
+			sendMessage(amount.value, localStorage.getItem('username'), from)
+			setTab('chat');
+			
+			return
+		}
+
+		const sessionDocRef = doc(db, 'sessions', props.session);
+
+		try {
+			await runTransaction(db, async (transaction) => {
+				const sessionDoc = await transaction.get(sessionDocRef);
+				if (!sessionDoc.exists()) {
+					throw "Document does not exist!";
+				}
+
+				const data = sessionDoc.data() as GameData;
+				const players = data.players;
+
+				const updatedPlayers = players.map(p => {
+					return { ...p, money: p.money + amount.value };
+				});
+
+				transaction.update(sessionDocRef, { players: updatedPlayers });
+				message.value = `took ${amount.value} € from bank`
+				sendMessage()
+				amount.value = 0;
+				setTab('chat');
+			})
+		} catch (e) {
+			console.log("Transaction failed: ", e);
+			alert(`Transaction failed: ${e}`);
+		}
+	}
+
 </script>
