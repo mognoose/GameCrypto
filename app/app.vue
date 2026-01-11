@@ -6,13 +6,14 @@
       <Icon name="material-symbols:menu-rounded" size="3rem" @click="toggleSettings" />
     </header>
     <Settings v-if="settingsOpen" />
-    <SelectGame v-if="!settingsOpen && !session" @select="setSession" />
+    <SelectGame v-if="!settingsOpen && !session" @select="setSession" :url-session="route.query.session" />
     <Game v-else-if="!settingsOpen" :session />
   </div>
 </template>
 
 <script lang="ts" setup>
   import { onMounted } from 'vue';
+  const route = useRoute();
   const session = ref<string>('')
   const settingsOpen = ref<boolean>(false)
 

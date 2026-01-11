@@ -42,7 +42,10 @@ async function changeUserName() {
 
 function leave() {
   localStorage.removeItem('session')
-  window.location.reload()
+  const router = useRouter()
+  router.push({ query: {} }).then(() => {
+    window.location.reload()
+  })
 }
 
 onMounted(()=>{

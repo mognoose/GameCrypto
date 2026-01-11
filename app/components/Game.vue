@@ -1,5 +1,11 @@
 <template>
-	<div class="session-id">{{session}}</div>
+	<div class="session-id" @click="toggleQr">{{session}}</div>
+	<div v-if="showQr" class="session-info">
+		<a href="#" @click.prevent="copySessionLink">COPY SESSION ID <Icon name="material-symbols:content-copy-outline-rounded" /></a>
+		<div class="qr-container">
+			<img :src="`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://the-game-crypto.vercel.app?session=${session}`" alt="Session QR Code" />
+		</div>
+	</div>
 	<form v-if="selectedTab === 'chat'" class="chat" @submit.prevent="handleChatSubmit">
 		<div ref="messagesContainer" class="messages">
 			<p v-for="message in gameData?.messages">
@@ -64,6 +70,24 @@
 
 	const amount = ref(0)
 	const messagesContainer = ref<HTMLDivElement | null>(null)
+
+	const showQr = ref<boolean>(false)
+	
+	function toggleQr() {
+		showQr.value = !showQr.value
+	}
+
+	function copySessionLink() {
+		const sessionLink = `https://the-game-crypto.vercel.app?session=${props.session}`;
+		navigator.clipboard.writeText(sessionLink)
+			.then(() => {
+				alert('Session link copied to clipboard!');
+			})
+			.catch(err => {
+				console.error('Failed to copy session link: ', err);
+				alert('Failed to copy session link.');
+			});
+	}
 
 	const scrollToBottom = () => {
 		if (messagesContainer.value) {

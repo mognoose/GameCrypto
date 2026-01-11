@@ -22,6 +22,16 @@ header {
 	}
 }
 
+a:link,
+a:visited,
+a:active {
+	color: var(--color-gray-100);
+}
+
+a:hover {
+	color: var(--color-gray-50);
+}
+
 form {
 	margin: 0 auto;
 	padding: 1rem;
@@ -67,6 +77,18 @@ form {
 
 .session-id {
 	margin-bottom: 2rem;
+	cursor: pointer;
+}
+
+.session-info {
+	margin-bottom: 2rem;
+
+	.qr-container {
+		width: fit-content;
+		margin: 1rem auto;
+		padding: 2rem;
+		background-color: white;
+	}
 }
 
 .chat, .transaction {

@@ -15,16 +15,29 @@
 	const session = ref('')
 	const emit = defineEmits(['select'])
 
+	const props = defineProps({
+		urlSession: {
+			type: String,
+			default: ''
+		}
+	})
+
 	const userName = ref('')
 	const newUserName = ref('')
 
 	function setUserName() {
 		localStorage.setItem('username', newUserName.value)
 		userName.value = newUserName.value
+		if (props.urlSession) {
+			emit('select', props.urlSession)
+		}
 	}
 
 	onMounted(() => {
 		userName.value = localStorage.getItem('username')
+		if (userName.value && props.urlSession) {
+			emit('select', props.urlSession)
+		}
 	})
 
 
