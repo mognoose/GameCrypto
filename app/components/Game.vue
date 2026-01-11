@@ -234,7 +234,10 @@
 				const players = data.players;
 
 				const updatedPlayers = players.map(p => {
-					return { ...p, money: p.money + amount.value };
+					if (p.player === playerData.value.player) {
+						return { ...p, money: p.money + amount.value };
+					}
+					return p;
 				});
 
 				transaction.update(sessionDocRef, { players: updatedPlayers });

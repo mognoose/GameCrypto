@@ -5,7 +5,9 @@
 		<button @click="selectGame">New Game</button>
 	</form>
 	<form v-else @submit.prevent="setUserName">
+		<h2>Please enter your username</h2>
 		<input class="username-input" type="text" v-model="newUserName">
+		<input type="submit" value="Enter">
 	</form>
 </template>
 
