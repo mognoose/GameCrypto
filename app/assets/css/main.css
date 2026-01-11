@@ -7,6 +7,21 @@
 	font-family: 'Funnel Sans', system-ui;
 }
 
+header {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
+
+	:nth-child(1) {
+		grid-column-start: 2;
+	}
+
+
+	:nth-child(2) {
+		justify-self: end;
+	}
+}
+
 form {
 	margin: 0 auto;
 	padding: 1rem;

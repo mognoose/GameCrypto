@@ -102,7 +102,12 @@
 		selectedTab.value = tab
 	}
 
-	async function sendMessage(requestedAmount?: number|null, from?: string|null, to?: string|null) {
+	async function sendMessage(eventOrAmount?: Event | number | null, from?: string | null, to?: string | null) {
+		let requestedAmount: number | null = null;
+		if (typeof eventOrAmount === 'number') {
+			requestedAmount = eventOrAmount;
+		}
+
 		const payload: Message = {
 			message: message.value,
 			user: localStorage.getItem('username'),
