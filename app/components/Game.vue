@@ -1,11 +1,14 @@
 <template>
 	<div class="session-id">{{session}}</div>
-	<form v-if="selectedTab === 'chat'" class="chat" @submit.prevent="sendMessage">
-		<div class="messages">
+	<form v-if="selectedTab === 'chat'" class="chat" @submit.prevent="handleChatSubmit">
+		<div ref="messagesContainer" class="messages">
 			<p v-for="message in gameData?.messages">
 				<span class="time">{{ formatTime(message.createdAt) }}</span>
 				<span class="user">{{ message.user }}: </span>
 				<span class="message">{{ message.message }}</span>
+				<button type="button" v-if="message.requestedAmount && message.to === playerData.player" class="pay" @click="payRequest(message)">
+					Pay {{ message.requestedAmount }} to {{ message.from }}
+				</button>
 			</p>
 		</div>
 		<input id="message" type="text" v-model="message" placeholder="Type message">
@@ -38,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-	import { onMounted, ref } from 'vue';
+	import { onMounted, ref, watch, nextTick } from 'vue';
 	import { doc, setDoc, arrayUnion, onSnapshot, type Firestore, getDoc, updateDoc, runTransaction } from 'firebase/firestore';
 	import type { Message, GameData } from '~/types/game';
 	import { formatTime } from '~/composables/time';
@@ -60,6 +63,21 @@
 	const playerData = ref({player: '', money: 0})
 
 	const amount = ref(0)
+	const messagesContainer = ref<HTMLDivElement | null>(null)
+
+	const scrollToBottom = () => {
+		if (messagesContainer.value) {
+			messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+		}
+	};
+
+	watch(() => gameData.value?.messages, (newMessages, oldMessages) => {
+		if (newMessages && (!oldMessages || newMessages.length > oldMessages.length)) {
+			nextTick(() => {
+				scrollToBottom();
+			});
+		}
+	}, { deep: true });
 
 	onMounted(async() => {
 		const userName = localStorage.getItem('username')
@@ -102,21 +120,23 @@
 		selectedTab.value = tab
 	}
 
-	async function sendMessage(eventOrAmount?: Event | number | null, from?: string | null, to?: string | null) {
-		let requestedAmount: number | null = null;
-		if (typeof eventOrAmount === 'number') {
-			requestedAmount = eventOrAmount;
-		}
-
+	async function sendMessage(
+		msg: string,
+		opts: {
+			requestedAmount?: number | null,
+			from?: string | null,
+			to?: string | null
+		} = {}
+	) {
 		const payload: Message = {
-			message: message.value,
+			message: msg,
 			user: localStorage.getItem('username'),
 			createdAt: Date.now(),
 		}
 
-		if(requestedAmount)	payload.requestedAmount = requestedAmount
-		if(from) payload.from = from
-		if(to) payload.to = to
+		if (opts.requestedAmount) payload.requestedAmount = opts.requestedAmount;
+		if (opts.from) payload.from = opts.from;
+		if (opts.to) payload.to = opts.to;
 		
 		const sessionDocRef = doc(db, 'sessions', props.session);
 		await setDoc(
@@ -124,9 +144,13 @@
 			{ messages: arrayUnion(payload) },
 			{ merge: true },
 		);
+	}
 
-		message.value = ''
-		
+	function handleChatSubmit() {
+		if (message.value) {
+			sendMessage(message.value);
+			message.value = '';
+		}
 	}
 
 	async function sendMoney(to: string) {
@@ -178,8 +202,8 @@
 
 				transaction.update(sessionDocRef, { players: updatedPlayers });
 			});
-			message.value = `sent ${amount.value} € to ${to}`
-			sendMessage()
+			const msg = `sent ${amount.value} € to ${to}`
+			sendMessage(msg)
 			amount.value = 0;
 			setTab('chat');
 		} catch (e) {
@@ -190,8 +214,8 @@
 
 	async function requestMoney(from: string) {
 		if (from !== 'bank') {
-			message.value = `requested ${amount.value} € from ${from}`
-			sendMessage(amount.value, localStorage.getItem('username'), from)
+			const msg = `requested ${amount.value} € from ${from}`
+			sendMessage(msg, { requestedAmount: amount.value, from: playerData.value.player, to: from })
 			setTab('chat');
 			
 			return
@@ -214,8 +238,8 @@
 				});
 
 				transaction.update(sessionDocRef, { players: updatedPlayers });
-				message.value = `took ${amount.value} € from bank`
-				sendMessage()
+				const msg = `took ${amount.value} € from bank`
+				sendMessage(msg)
 				amount.value = 0;
 				setTab('chat');
 			})
@@ -224,5 +248,71 @@
 			alert(`Transaction failed: ${e}`);
 		}
 	}
+
+	async function payRequest(message: Message) {
+		const from = playerData.value.player;
+		const to = message.from;
+		const requestedAmount = message.requestedAmount;
+
+		if (!to || !requestedAmount) {
+			return;
+		}
+
+		if (from === to) {
+			alert("You can't pay yourself.");
+			return;
+		}
+
+		if (requestedAmount <= 0) {
+			alert("Invalid amount.");
+			return;
+		}
+
+		const sessionDocRef = doc(db, 'sessions', props.session);
+		try {
+			await runTransaction(db, async (transaction) => {
+				const sessionDoc = await transaction.get(sessionDocRef);
+				if (!sessionDoc.exists()) {
+					throw "Document does not exist!";
+				}
+
+				const data = sessionDoc.data() as GameData;
+				const players = data.players;
+
+				const fromPlayer = players.find(p => p.player === from);
+				const toPlayer = players.find(p => p.player === to);
+
+				if (!fromPlayer) {
+					throw "Sender not found!";
+				}
+
+				if (!toPlayer) {
+					throw "Receiver not found!";
+				}
+
+				if (fromPlayer.money < requestedAmount) {
+					throw "Insufficient funds!";
+				}
+
+				const updatedPlayers = players.map(p => {
+					if (p.player === from) {
+						return { ...p, money: p.money - requestedAmount };
+					}
+					if (p.player === to) {
+						return { ...p, money: p.money + requestedAmount };
+					}
+					return p;
+				});
+
+				transaction.update(sessionDocRef, { players: updatedPlayers });
+			});
+			const msg = `paid ${requestedAmount} € to ${to}`;
+			sendMessage(msg);
+		} catch (e) {
+			console.log("Transaction failed: ", e);
+			alert(`Transaction failed: ${e}`);
+		}
+	}
+
 
 </script>
